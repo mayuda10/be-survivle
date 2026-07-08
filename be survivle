@@ -1,0 +1,1172 @@
+import pygame
+import random
+import math
+
+pygame.init()
+
+LARGURA, ALTURA = 900, 600
+tela = pygame.display.set_mode((LARGURA, ALTURA))
+pygame.display.set_caption("Mini Brawl")
+
+clock = pygame.time.Clock()
+fonte = pygame.font.SysFont(None, 30)
+
+# Jogador
+player = pygame.Rect(430, 280, 40, 40)
+vel = 5
+
+balas = []
+inimigos = []
+
+pontos = 0
+
+for _ in range(6):
+    inimigos.append([
+        random.randint(0, LARGURA),
+        random.randint(0, ALTURA),
+        2
+    ])
+
+rodando = True
+
+while rodando:
+    clock.tick(60)
+
+    for evento in pygame.event.get():
+        if evento.type == pygame.QUIT:
+            rodando = False
+
+        if evento.type == pygame.MOUSEBUTTONDOWN:
+            mx, my = pygame.mouse.get_pos()
+
+            dx = mx - player.centerx
+            dy = my - player.centery
+
+            dist = math.hypot(dx, dy)
+            if dist != 0:
+                dx /= dist
+                dy /= dist
+
+            balas.append([
+                player.centerx,
+                player.centery,
+                dx * 10,
+                dy * 10
+            ])
+
+    teclas = pygame.key.get_pressed()
+
+    if teclas[pygame.K_w]:
+        player.y -= vel
+    if teclas[pygame.K_s]:
+        player.y += vel
+    if teclas[pygame.K_a]:
+        player.x -= vel
+    if teclas[pygame.K_d]:
+        player.x += vel
+
+    player.clamp_ip(pygame.Rect(0, 0, LARGURA, ALTURA))
+
+    # Balas
+    for bala in balas[:]:
+        bala[0] += bala[2]
+        bala[1] += bala[3]
+
+        if bala[0] < 0 or bala[0] > LARGURA or bala[1] < 0 or bala[1] > ALTURA:
+            balas.remove(bala)
+
+    # Inimigos seguem jogador
+    for inimigo in inimigos[:]:
+        dx = player.centerx - inimigo[0]
+        dy = player.centery - inimigo[1]
+        dist = math.hypot(dx, dy)
+
+        if dist != 0:
+            inimigo[0] += dx / dist * inimigo[2]
+            inimigo[1] += dy / dist * inimigo[2]
+
+        if player.collidepoint(inimigo[0], inimigo[1]):
+            rodando = False
+
+        for bala in balas[:]:
+            if math.hypot(bala[0]-inimigo[0], bala[1]-inimigo[1]) < 20:
+                if bala in balas:
+                    balas.remove(bala)
+                inimigos.remove(inimigo)
+                pontos += 1
+
+                inimigos.append([
+                    random.randint(0, LARGURA),
+                    random.randint(0, ALTURA),
+                    random.uniform(2, 3.5)
+                ])
+                break
+
+    # Desenho
+    tela.fill((60, 180, 90))
+
+    pygame.draw.rect(tela, (30, 100, 255), player)
+
+    for bala in balas:
+        pygame.draw.circle(tela, (255, 255, 0), (int(bala[0]), int(bala[1])), 5)
+
+    for inimigo in inimigos:
+        pygame.draw.circle(tela, (220, 40, 40), (int(inimigo[0]), int(inimigo[1])), 18)
+
+    texto = fonte.render(f"Pontos: {pontos}", True, (255,255,255))
+    tela.blit(texto, (10,10))
+
+    pygame.display.flip()
+
+pygame.quit()############################
+#        🌳     🌳         #
+#                          #
+#    🌳          🌳         #
+#                          #
+#         ⭐               #
+############################❤️❤️❤️❤️❤️
+
+Pontos: 15
+
+Super ███████░░░MiniBrawl/
+│
+├── main.py
+├── game.py
+├── menu.py
+├── player.py
+├── enemy.py
+├── bullet.py
+├── super.py
+├── gadget.py
+├── map.py
+├── ui.py
+├── sound.py
+├── animation.py
+├── particles.py
+├── online.py
+├── assets/
+│   ├── players/
+│   ├── enemies/
+│   ├── maps/
+│   ├── sounds/
+│   └── fonts/import pygame
+from settings import *
+
+class Player:
+    def __init__(self):
+        self.image = pygame.image.load("assets/images/player.png").convert_alpha()
+
+        # aumenta o personagem sem perder a transparência
+        self.image = pygame.transform.scale(self.image, (80, 80))
+
+        self.rect = self.image.get_rect(center=(WIDTH//2, HEIGHT//2))
+
+        self.speed = PLAYER_SPEED
+        self.hp = PLAYER_HP
+
+    def update(self):
+        keys = pygame.key.get_pressed()
+
+        if keys[pygame.K_w]:
+            self.rect.y -= self.speed
+        if keys[pygame.K_s]:
+            self.rect.y += self.speed
+        if keys[pygame.K_a]:
+            self.rect.x -= self.speed
+        if keys[pygame.K_d]:
+            self.rect.x += self.speed
+
+        self.rect.x = max(0, min(WIDTH - self.rect.width, self.rect.x))
+        self.rect.y = max(0, min(HEIGHT - self.rect.height, self.rect.y))
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)import pygame
+import math
+from settings import *
+
+class Enemy:
+    def __init__(self, x, y):
+        self.image = pygame.image.load("assets/images/zombie.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image, (80, 80))
+        self.rect = self.image.get_rect(center=(x, y))
+
+        self.speed = 2
+        self.hp = 100
+
+    def update(self, player):
+
+        dx = player.rect.centerx - self.rect.centerx
+        dy = player.rect.centery - self.rect.centery
+
+        dist = math.hypot(dx, dy)
+
+        if dist > 0:
+            self.rect.x += dx / dist * self.speed
+            self.rect.y += dy / dist * self.speed
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)from enemy import Enemy
+
+class Game:
+
+    def __init__(self):
+
+        self.player = Player()
+
+        self.enemies = [
+            Enemy(100,100),
+            Enemy(1100,100),
+            Enemy(100,600),
+            Enemy(1100,600)
+        ]
+
+    def update(self):
+
+        self.player.update()
+
+        for enemy in self.enemies:
+            enemy.update(self.player)
+
+    def draw(self, screen):
+
+        screen.fill((90,180,90))
+
+        self.player.draw(screen)
+
+        for enemy in self.enemies:
+            enemy.draw(screen)self.image = pygame.image.load(
+    "assets/images/skin_superhero.png"
+).convert_alpha(){
+  "coins": 0,
+  "selected_skin": "default",
+  "owned_skins": [
+    "default"
+  ]
+}{
+  "coins": 1500,
+  "selected_skin": "ghost",
+  "owned_skins": [
+    "default",
+    "superhero",
+    "ghost"
+  ]
+}SKINS = {
+    "default": "assets/images/player.png",
+    "superhero": "assets/images/skin_superhero.png",
+    "ghost": "assets/images/skin_ghost.png"
+}
+
+self.image = pygame.image.load(SKINS[selected_skin]).convert_alpha()
+self.image = pygame.transform.scale(self.image, (80, 80))import pygame
+from settings import *
+
+class Menu:
+
+    def __init__(self):
+
+        self.background = pygame.image.load(
+            "assets/images/cover.png"
+        ).convert()
+
+        self.background = pygame.transform.scale(
+            self.background,
+            (WIDTH, HEIGHT)
+        )
+
+    def draw(self, screen):
+
+        screen.blit(self.background, (0,0))SKINS = {
+    "default": "assets/images/player.png",
+    "superhero": "assets/images/skin_superhero.png",
+    "ghost": "assets/images/skin_ghost.png",
+    "electric": "assets/images/skin_electric.png"
+}SKINS = {
+    "default": "assets/images/player.png",
+    "superhero": "assets/images/skin_superhero.png",
+    "ghost": "assets/images/skin_ghost.png",
+    "electric": "assets/images/skin_electric.png",
+    "robot": "assets/images/skin_robot.png"
+}# Configurações do jogo
+
+WIDTH = 1280
+HEIGHT = 720
+
+FPS = 60
+
+TITLE = "GhostBrawl"
+
+WHITE = (255,255,255)
+BLACK = (0,0,0)
+GREEN = (70,180,70)import pygame
+from settings import *
+
+class Menu:
+
+    def __init__(self):
+
+        self.cover = pygame.image.load(
+            "assets/images/cover.png"
+        ).convert()
+
+        self.cover = pygame.transform.scale(
+            self.cover,
+            (WIDTH,HEIGHT)
+        )
+
+        self.font = pygame.font.SysFont("Arial",40)
+
+    def update(self,event):
+
+        if event.type == pygame.KEYDOWN:
+
+            if event.key == pygame.K_SPACE:
+                return "game"
+
+        return "menu"
+
+    def draw(self,screen):
+
+        screen.blit(self.cover,(0,0))
+
+        texto = self.font.render(
+            "PRESSIONE ESPAÇO PARA JOGAR",
+            True,
+            WHITE
+        )
+
+        screen.blit(
+            texto,
+            (
+                WIDTH//2-texto.get_width()//2,
+                HEIGHT-60
+            )
+        )import pygame
+from settings import *
+
+class Player:
+
+    def __init__(self):
+
+        self.image = pygame.image.load(
+            "assets/images/player.png"
+        ).convert_alpha()
+
+        self.image = pygame.transform.scale(
+            self.image,
+            (80,80)
+        )
+
+        self.rect = self.image.get_rect()
+
+        self.rect.center = (
+            WIDTH//2,
+            HEIGHT//2
+        )
+
+        self.speed = 5
+
+    def update(self):
+
+        keys = pygame.key.get_pressed()
+
+        if keys[pygame.K_w]:
+            self.rect.y -= self.speed
+
+        if keys[pygame.K_s]:
+            self.rect.y += self.speed
+
+        if keys[pygame.K_a]:
+            self.rect.x -= self.speed
+
+        if keys[pygame.K_d]:
+            self.rect.x += self.speed
+
+    def draw(self,screen):
+
+        screen.blit(
+            self.image,
+            self.rect
+        )import pygame
+from settings import *
+from player import Player
+
+class Game:
+
+    def __init__(self):
+
+        self.player = Player()
+
+    def update(self):
+
+        self.player.update()
+
+    def draw(self,screen):
+
+        screen.fill(GREEN)
+
+        self.player.draw(screen)import pygame
+
+from settings import *
+from menu import Menu
+from game import Game
+
+pygame.init()
+
+screen = pygame.display.set_mode(
+    (WIDTH,HEIGHT)
+)
+
+pygame.display.set_caption(TITLE)
+
+clock = pygame.time.Clock()
+
+menu = Menu()
+
+game = Game()
+
+scene = "menu"
+
+running = True
+
+while running:
+
+    clock.tick(FPS)
+
+    for event in pygame.event.get():
+
+        if event.type == pygame.QUIT:
+            running = False
+
+        if scene == "menu":
+            scene = menu.update(event)
+
+    if scene == "game":
+        game.update()
+
+    if scene == "menu":
+        menu.draw(screen)
+    else:
+        game.draw(screen)
+
+    pygame.display.flip()
+
+pygame.quit()import pygame
+import math
+
+class Bullet:
+
+    def __init__(self,x,y,target_x,target_y):
+
+        self.x = x
+        self.y = y
+
+        self.speed = 12
+
+        dx = target_x - x
+        dy = target_y - y
+
+        dist = math.hypot(dx,dy)
+
+        if dist == 0:
+            dist = 1
+
+        self.dx = dx/dist*self.speed
+        self.dy = dy/dist*self.speed
+
+        self.radius = 6
+
+    def update(self):
+
+        self.x += self.dx
+        self.y += self.dy
+
+    def draw(self,screen):
+
+        pygame.draw.circle(
+            screen,
+            (255,255,0),
+            (int(self.x),int(self.y)),
+            self.radius
+        )import pygame
+import math
+
+class Enemy:
+
+    def __init__(self,x,y):
+
+        self.image = pygame.image.load(
+            "assets/images/zombie.png"
+        ).convert_alpha()
+
+        self.image = pygame.transform.scale(
+            self.image,
+            (70,70)
+        )
+
+        self.rect = self.image.get_rect(center=(x,y))
+
+        self.hp = 100
+
+        self.speed = 2
+
+    def update(self,player):
+
+        dx = player.rect.centerx-self.rect.centerx
+        dy = player.rect.centery-self.rect.centery
+
+        dist = math.hypot(dx,dy)
+
+        if dist > 0:
+
+            self.rect.x += dx/dist*self.speed
+            self.rect.y += dy/dist*self.speed
+
+    def draw(self,screen):
+
+        screen.blit(self.image,self.rect)def shoot(self,bullets):
+
+    mx,my = pygame.mouse.get_pos()
+
+    from bullet import Bullet
+
+    bullets.append(
+        Bullet(
+            self.rect.centerx,
+            self.rect.centery,
+            mx,
+            my
+        )
+    )import pygame
+import random
+import math
+
+from settings import *
+from player import Player
+from enemy import Enemy
+
+class Game:
+
+    def __init__(self):
+
+        self.player = Player()
+
+        self.bullets = []
+
+        self.enemies = []
+
+        self.coins = 0
+
+        for i in range(6):
+
+            self.enemies.append(
+
+                Enemy(
+
+                    random.randint(50,1200),
+
+                    random.randint(50,650)
+
+                )
+
+            )
+
+    def update(self):
+
+        self.player.update()
+
+        for bullet in self.bullets:
+            bullet.update()
+
+        for enemy in self.enemies:
+            enemy.update(self.player)
+
+        # colisão
+
+        for bullet in self.bullets[:]:
+
+            for enemy in self.enemies[:]:
+
+                dist = math.hypot(
+                    bullet.x-enemy.rect.centerx,
+                    bullet.y-enemy.rect.centery
+                )
+
+                if dist < 35:
+
+                    enemy.hp -= 50
+
+                    if bullet in self.bullets:
+                        self.bullets.remove(bullet)
+
+                    if enemy.hp <= 0:
+
+                        self.enemies.remove(enemy)
+
+                        self.coins += 10
+
+                    break
+
+    def draw(self,screen):
+
+        screen.fill((80,170,80))
+
+        self.player.draw(screen)
+
+        for enemy in self.enemies:
+            enemy.draw(screen)
+
+        for bullet in self.bullets:
+            bullet.draw(screen)
+
+        fonte = pygame.font.SysFont(None,36)
+
+        txt = fonte.render(
+            f"Moedas: {self.coins}",
+            True,
+            (255,255,255)
+        )
+
+        screen.blit(txt,(20,20))if scene == "game":
+
+    if event.type == pygame.MOUSEBUTTONDOWN:
+
+        game.player.shoot(
+            game.bullets
+        )PLAYER_HP = 100
+
+ZOMBIE_DAMAGE = 10
+
+RESPAWN_TIME = 120self.hp = PLAYER_HP
+
+self.invincible = 0def hit(self,damage):
+
+    if self.invincible == 0:
+
+        self.hp -= damage
+
+        self.invincible = 40if self.invincible > 0:
+    self.invincible -= 1if self.rect.colliderect(player.rect):
+
+    player.hit(10)import pygame
+
+class Explosion:
+
+    def __init__(self,x,y):
+
+        self.x=x
+        self.y=y
+
+        self.radius=5
+
+        self.life=25
+
+    def update(self):
+
+        self.radius+=2
+
+        self.life-=1
+
+    def draw(self,screen):
+
+        pygame.draw.circle(
+
+            screen,
+
+            (255,180,0),
+
+            (self.x,self.y),
+
+            self.radius,
+
+            3
+
+        )from effect import Explosionself.effects=[]
+
+self.spawn=0
+
+self.score=0self.effects.append(
+
+    Explosion(
+
+        enemy.rect.centerx,
+
+        enemy.rect.centery
+
+    )
+
+)
+
+self.score+=1for e in self.effects[:]:
+
+    e.update()
+
+    if e.life<=0:
+
+        self.effects.remove(e)self.spawn+=1
+
+if self.spawn>=RESPAWN_TIME:
+
+    self.spawn=0
+
+    self.enemies.append(
+
+        Enemy(
+
+            random.randint(50,1200),
+
+            random.randint(50,650)
+
+        )
+
+    )if self.player.hp<=0:
+
+    print("GAME OVER")
+
+    exit()for e in self.effects:
+
+    e.draw(screen)pygame.draw.rect(
+
+    screen,
+
+    (120,0,0),
+
+    (20,60,200,20)
+
+)
+
+pygame.draw.rect(
+
+    screen,
+
+    (0,220,0),
+
+    (20,60,self.player.hp*2,20)
+
+)txt=fonte.render(
+
+    f"Score: {self.score}",
+
+    True,
+
+    (255,255,255)
+
+)
+
+screen.blit(txt,(20,90))pygame.draw.rect(screen,(30,120,30),(250,150,120,120))
+
+pygame.draw.rect(screen,(30,120,30),(650,300,200,80))
+
+pygame.draw.rect(screen,(30,120,30),(950,120,100,180))import json
+import os
+
+SAVE_FILE = "save.json"
+
+DEFAULT_SAVE = {
+    "coins": 0,
+    "record": 0,
+    "selected_skin": "default",
+    "owned_skins": [
+        "default"
+    ]
+}
+
+def load():
+
+    if not os.path.exists(SAVE_FILE):
+
+        save()
+
+    with open(SAVE_FILE,"r") as f:
+
+        return json.load(f)
+
+def save(data=DEFAULT_SAVE):
+
+    with open(SAVE_FILE,"w") as f:
+
+        json.dump(data,f,indent=4)import pygame
+
+class Button:
+
+    def __init__(self,x,y,w,h,text):
+
+        self.rect=pygame.Rect(x,y,w,h)
+
+        self.text=text
+
+        self.font=pygame.font.SysFont("Arial",30)
+
+    def draw(self,screen):
+
+        pygame.draw.rect(screen,(70,70,70),self.rect)
+
+        pygame.draw.rect(screen,(255,255,255),self.rect,2)
+
+        txt=self.font.render(self.text,True,(255,255,255))
+
+        screen.blit(
+            txt,
+            (
+                self.rect.centerx-txt.get_width()/2,
+                self.rect.centery-txt.get_height()/2
+            )
+        )
+
+    def clicked(self,event):
+
+        return (
+            event.type==pygame.MOUSEBUTTONDOWN
+            and
+            self.rect.collidepoint(event.pos)
+        )from button import Button
+
+SKINS = {
+
+    "default":{
+        "price":0
+    },
+
+    "superhero":{
+        "price":500
+    },
+
+    "ghost":{
+        "price":1000
+    },
+
+    "electric":{
+        "price":2000
+    },
+
+    "robot":{
+        "price":3000
+    }
+
+}
+
+class Shop:
+
+    def __init__(self):
+
+        self.buttons=[]
+
+        y=120
+
+        for skin in SKINS:
+
+            self.buttons.append(
+
+                Button(
+
+                    750,
+
+                    y,
+
+                    180,
+
+                    50,
+
+                    skin
+
+                )
+
+            )
+
+            y+=80{
+    "coins": 0,
+    "record": 0,
+    "selected_skin": "default",
+    "owned_skins": [
+        "default"
+    ]
+}import pygame
+from save import load, save
+
+SKINS = {
+    "default": {
+        "name": "Clássica",
+        "price": 0,
+        "image": "assets/images/player.png"
+    },
+    "superhero": {
+        "name": "Super Herói",
+        "price": 500,
+        "image": "assets/images/skin_superhero.png"
+    },
+    "ghost": {
+        "name": "Fantasma",
+        "price": 1000,
+        "image": "assets/images/skin_ghost.png"
+    },
+    "electric": {
+        "name": "Elétrica",
+        "price": 2000,
+        "image": "assets/images/skin_electric.png"
+    },
+    "robot": {
+        "name": "Robô",
+        "price": 3000,
+        "image": "assets/images/skin_robot.png"
+    }
+}
+
+class Shop:
+
+    def __init__(self):
+
+        self.data = load()
+
+        self.font = pygame.font.SysFont("Arial",28)
+
+        self.cards = []
+
+        x = 70
+
+        for skin in SKINS:
+
+            img = pygame.image.load(SKINS[skin]["image"]).convert_alpha()
+
+            img = pygame.transform.scale(img,(80,80))
+
+            self.cards.append({
+                "id":skin,
+                "img":img,
+                "rect":pygame.Rect(x,150,120,170)
+            })
+
+            x += 150
+
+    def click(self,pos):
+
+        for card in self.cards:
+
+            if card["rect"].collidepoint(pos):
+
+                skin = card["id"]
+
+                if skin not in self.data["owned_skins"]:
+
+                    price = SKINS[skin]["price"]
+
+                    if self.data["coins"] >= price:
+
+                        self.data["coins"] -= price
+
+                        self.data["owned_skins"].append(skin)
+
+                if skin in self.data["owned_skins"]:
+
+                    self.data["selected_skin"] = skin
+
+                save(self.data)
+
+    def draw(self,screen):
+
+        title = self.font.render(
+            "LOJA",
+            True,
+            (255,255,255)
+        )
+
+        screen.blit(title,(40,40))
+
+        money = self.font.render(
+            f"Moedas: {self.data['coins']}",
+            True,
+            (255,255,0)
+        )
+
+        screen.blit(money,(900,40))
+
+        for card in self.cards:
+
+            pygame.draw.rect(
+                screen,
+                (60,60,60),
+                card["rect"]
+            )
+
+            screen.blit(
+                card["img"],
+                (
+                    card["rect"].x+20,
+                    card["rect"].y+10
+                )
+            )
+
+            skin = card["id"]
+
+            txt = self.font.render(
+                SKINS[skin]["name"],
+                True,
+                (255,255,255)
+            )
+
+            screen.blit(
+                txt,
+                (
+                    card["rect"].x+5,
+                    card["rect"].y+95
+                )
+            )
+
+            if skin == self.data["selected_skin"]:
+
+                texto = "EQUIPADA"
+
+            elif skin in self.data["owned_skins"]:
+
+                texto = "EQUIPAR"
+
+            else:
+
+                texto = str(SKINS[skin]["price"])+" 🪙"
+
+            pygame.draw.rect(
+                screen,
+                (0,120,255),
+                (
+                    card["rect"].x+10,
+                    card["rect"].y+125,
+                    100,
+                    30
+                )
+            )
+
+            t = self.font.render(
+                texto,
+                True,
+                (255,255,255)
+            )
+
+            screen.blit(
+                t,
+                (
+                    card["rect"].x+12,
+                    card["rect"].y+130
+                )
+            )class Wave:
+
+    def __init__(self):
+        self.number = 1
+        self.remaining = 5
+
+    def next(self):
+        self.number += 1
+        self.remaining = 5 + self.number * 2import pygame
+
+class Boss:
+
+    def __init__(self):
+        self.hp = 1000
+        self.speed = 1.5
+
+        self.image = pygame.image.load(
+            "assets/images/boss.png"
+        ).convert_alpha()
+
+        self.image = pygame.transform.scale(
+            self.image,
+            (160,160)
+        )
+
+        self.rect = self.image.get_rect(
+            center=(600,100)
+        )import pygame
+
+class Crate:
+
+    def __init__(self,x,y):
+
+        self.hp = 150
+
+        self.image = pygame.image.load(
+            "assets/images/crate.png"
+        ).convert_alpha()
+
+        self.image = pygame.transform.scale(
+            self.image,
+            (64,64)
+        )
+
+        self.rect = self.image.get_rect(
+            topleft=(x,y)
+        )import pygame
+
+class Coin:
+
+    def __init__(self,x,y):
+
+        self.image = pygame.image.load(
+            "assets/images/coin.png"
+        ).convert_alpha()
+
+        self.image = pygame.transform.scale(
+            self.image,
+            (32,32)
+        )
+
+        self.rect = self.image.get_rect(
+            center=(x,y)
+        )import pygame
+
+class Bush:
+
+    def __init__(self,x,y):
+
+        self.image = pygame.image.load(
+            "assets/images/tree.png"
+        ).convert_alpha()
+
+        self.image = pygame.transform.scale(
+            self.image,
+            (96,96)
+        )
+
+        self.rect = self.image.get_rect(
+            topleft=(x,y)
+        )import random
+from enemy import Enemy
+
+class WaveManager:
+    def __init__(self):
+        self.wave = 1
+        self.enemies_to_spawn = 5
+        self.spawn_delay = 60
+        self.timer = 0
+
+    def update(self, enemies):
+
+        self.timer += 1
+
+        if self.enemies_to_spawn > 0:
+
+            if self.timer >= self.spawn_delay:
+
+                self.timer = 0
+
+                x = random.choice([40,1240])
+                y = random.randint(40,680)
+
+                enemies.append(
+                    Enemy(x,y)
+                )
+
+                self.enemies_to_spawn -= 1
+
+        elif len(enemies)==0:
+
+            self.wave += 1
+
+            self.enemies_to_spawn = 5 + self.wave*2
+
+            if self.spawn_delay>20:
+                self.spawn_delay -= 3from wave import WaveManager
+
+self.wave = WaveManager()self.wave.update(self.enemies)txt = fonte.render(
+    f"Onda {self.wave.wave}",
+    True,
+    (255,255,255)
+)
+
+screen.blit(txt,(520,20))
